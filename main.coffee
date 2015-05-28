@@ -3,11 +3,16 @@ window.onload = ->
     hough = new Hough()
     hough.draw()
 
-
 class Hough
     constructor: (@canvas)->
         @xy_canvas = document.getElementById("xy-canvas");
         @xy_ctx = @xy_canvas.getContext("2d")
+
+        @pq_canvas = document.getElementById("uv-canvas");
+        @pq_ctx = @pq_canvas.getContext("2d")
+
+        @width = @xy_canvas.width
+        @height = @xy_canvas.height
 
         @points = []
         for i in [1...10]
@@ -20,9 +25,22 @@ class Hough
 
     draw: ->
         @xy_ctx.fillStyle = "rgb(255, 255, 255)";
-        @xy_ctx.fillRect(0, 0, @xy_canvas.width, @xy_canvas.height);
+        @xy_ctx.fillRect(0, 0, @width, @height);
+
+        @pq_ctx.fillStyle = "rgb(255, 255, 255)";
+        @pq_ctx.fillRect(0, 0, @width, @height);
+
         for point in @points
             point.draw(@xy_ctx)
+
+            # draw line on uv-canvas
+            px = point.position.x / (@width / 2) - 1
+            py = point.position.y / (@height / 2) - 1
+            q = (p) -> -p * px + py + 1
+            @pq_ctx.beginPath()
+            @pq_ctx.moveTo(0, q(-1) * (@height / 2))
+            @pq_ctx.lineTo(@width, q(1) * (@height / 2))
+            @pq_ctx.stroke()
 
 class DraggablePoint
     constructor: (canvas, @position, @radius) ->

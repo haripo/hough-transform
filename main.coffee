@@ -1,3 +1,6 @@
+eventToPosition = (e) ->
+    rect = event.target.getBoundingClientRect();
+    { x: event.clientX - rect.left, y: event.clientY - rect.top }
 
 window.onload = ->
     hough = new Hough()
@@ -23,6 +26,21 @@ class Hough
             )
             @points.push(point)
 
+        Bacon.fromEvent(@pq_canvas, "mousemove")
+            .map((e) => eventToPosition(e))
+            .toProperty({ x: 0, y: 0 })
+            .onValue((p) =>
+                @mx = p.x
+                @my = p.y
+                @draw()
+        )
+        Bacon.fromEvent(@pq_canvas, "mouseleave")
+            .onValue((p) =>
+                @mx = null
+                @my = null
+                @draw()
+        )
+
     draw: ->
         @xy_ctx.fillStyle = "rgb(255, 255, 255)";
         @xy_ctx.fillRect(0, 0, @width, @height);
@@ -30,17 +48,28 @@ class Hough
         @pq_ctx.fillStyle = "rgb(255, 255, 255)";
         @pq_ctx.fillRect(0, 0, @width, @height);
 
+        hw = @width / 2
+        hh = @height / 2
+
         for point in @points
             point.draw(@xy_ctx)
 
             # draw line on uv-canvas
-            px = point.position.x / (@width / 2) - 1
-            py = point.position.y / (@height / 2) - 1
+            px = point.position.x / hw - 1
+            py = point.position.y / hh - 1
             q = (p) -> -p * px + py + 1
             @pq_ctx.beginPath()
-            @pq_ctx.moveTo(0, q(-1) * (@height / 2))
-            @pq_ctx.lineTo(@width, q(1) * (@height / 2))
+            @pq_ctx.moveTo(0, q(-1) * hh)
+            @pq_ctx.lineTo(@width, q(1) * hh)
             @pq_ctx.stroke()
+
+        if @mx == null || @my == null
+            return;
+        y = (x) => (@mx / hw - 1) * x + (@my / hh - 1) + 1
+        @xy_ctx.beginPath()
+        @xy_ctx.moveTo(0, y(-1) * hh)
+        @xy_ctx.lineTo(@width, y(1) * hh)
+        @xy_ctx.stroke()
 
 class DraggablePoint
     constructor: (canvas, @position, @radius) ->
@@ -48,18 +77,18 @@ class DraggablePoint
         mouseup = Bacon.fromEvent(canvas, "mouseup")
 
         deltas = mousedown
-            .map((e) => @eventToPosition(e))
+            .map((e) => eventToPosition(e))
             .filter((p) => @hittest(p))
             .flatMap(() =>
                 Bacon.fromEvent(canvas, "mousemove")
-                    .map((e) => @eventToPosition(e))
+                    .map((e) => eventToPosition(e))
                     .slidingWindow(2, 2)
                     .map((p) -> {
                         x: p[0].x - p[1].x,
                         y: p[0].y - p[1].y
                     })
                     .takeUntil(mouseup)
-        )
+            )
 
         @move_bus = new Bacon.Bus()
         deltas.toProperty({ x: 0, y: 0 }).onValue((p) =>
@@ -68,13 +97,10 @@ class DraggablePoint
             @move_bus.push(@position)
         )
 
-    eventToPosition: (e) ->
-        rect = event.target.getBoundingClientRect();
-        { x: event.clientX - rect.left, y: event.clientY - rect.top }
-
     hittest: (p) ->
-        ((p.x - @position.x) ** 2 + (p.y - @position.y) ** 2) <
-            @radius ** 2
+        dx = p.x - @position.x
+        dy = p.y - @position.y
+        (dx ** 2 + dy ** 2) < @radius ** 2
 
     moveBus: () -> @move_bus
 

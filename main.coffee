@@ -20,6 +20,8 @@ class Hough
         @width = @xy_canvas.width
         @height = @xy_canvas.height
 
+        @xy_line = new Line(((_x, _y, x) => _x * x + _y + 1), @xy_canvas)
+
         @points = []
         for i in [1...10]
             position = { x: 10 * i, y: 10 * i }
@@ -29,20 +31,17 @@ class Hough
             )
             @points.push(point)
 
-        Bacon.fromEvent(@pq_canvas, "mousemove")
-            .map((e) => eventToPosition(e))
-            .toProperty({ x: 0, y: 0 })
+        mouseleave = Bacon.fromEvent(@pq_canvas, "mouseleave")
+        mousemove = Bacon.fromEvent(@pq_canvas, "mousemove")
+        mousemove
+            .map(eventToPosition)
+            .merge(mouseleave.map(null))
             .onValue((p) =>
-                @mx = p.x
-                @my = p.y
-                @draw()
-        )
-        Bacon.fromEvent(@pq_canvas, "mouseleave")
-            .onValue((p) =>
-                @mx = null
-                @my = null
-                @draw()
-        )
+                if p == null
+                    @xy_line.hide()
+                else
+                    @xy_line.move(p.x, p.y)
+                @draw())
 
     draw: ->
         @xy_ctx.fillStyle = "rgb(255, 255, 255)";
@@ -66,13 +65,33 @@ class Hough
             @pq_ctx.lineTo(@width, q(1) * hh)
             @pq_ctx.stroke()
 
-        if @mx == null || @my == null
-            return;
-        y = (x) => (@mx / hw - 1) * x + (@my / hh - 1) + 1
-        @xy_ctx.beginPath()
-        @xy_ctx.moveTo(0, y(-1) * hh)
-        @xy_ctx.lineTo(@width, y(1) * hh)
-        @xy_ctx.stroke()
+        @xy_line.draw(@xy_ctx)
+
+class Line
+    constructor: (@transform, canvas) ->
+        @width = canvas.width
+        @height = canvas.height
+        @half_width = @width / 2
+        @half_height = @height / 2
+        @x = null
+        @y = null
+
+    move: (x, y) =>
+        @x = x / @half_width - 1
+        @y = y / @half_height - 1
+
+    hide: () ->
+        @x = null
+        @y = null
+
+    draw: (ctx) =>
+        if @x == null || @y == null
+            return
+
+        ctx.beginPath()
+        ctx.moveTo(0, @transform(@x, @y, -1) * @half_height)
+        ctx.lineTo(@width, @transform(@x, @y, 1) * @half_height)
+        ctx.stroke()
 
 class DraggablePoint
     _dragMoveStream: (mousedown, mouseup, mousemove) ->

@@ -2,6 +2,9 @@ eventToPosition = (e) ->
     rect = event.target.getBoundingClientRect();
     { x: event.clientX - rect.left, y: event.clientY - rect.top }
 
+calcPositionDiff = (p) ->
+    { x: p[0].x - p[1].x, y: p[0].y - p[1].y }
+
 window.onload = ->
     hough = new Hough()
     hough.draw()
@@ -72,41 +75,39 @@ class Hough
         @xy_ctx.stroke()
 
 class DraggablePoint
+    _dragMoveStream: (mousedown, mouseup, mousemove) ->
+        mousedown
+            .map(eventToPosition)
+            .filter(@hittest)
+            .flatMap(() =>
+                mousemove
+                    .map(eventToPosition)
+                    .slidingWindow(2, 2)
+                    .map(calcPositionDiff)
+                    .takeUntil(mouseup))
+
     constructor: (canvas, @position, @radius) ->
         mousedown = Bacon.fromEvent(canvas, "mousedown")
         mouseup = Bacon.fromEvent(canvas, "mouseup")
-
-        deltas = mousedown
-            .map((e) => eventToPosition(e))
-            .filter((p) => @hittest(p))
-            .flatMap(() =>
-                Bacon.fromEvent(canvas, "mousemove")
-                    .map((e) => eventToPosition(e))
-                    .slidingWindow(2, 2)
-                    .map((p) -> {
-                        x: p[0].x - p[1].x,
-                        y: p[0].y - p[1].y
-                    })
-                    .takeUntil(mouseup)
-            )
+        mousemove = Bacon.fromEvent(canvas, "mousemove")
 
         @move_bus = new Bacon.Bus()
-        deltas.toProperty({ x: 0, y: 0 }).onValue((p) =>
-            @position.x -= p.x
-            @position.y -= p.y
-            @move_bus.push(@position)
-        )
+        @_dragMoveStream(mousedown, mouseup, mousemove)
+            .toProperty({ x: 0, y: 0 })
+            .onValue((p) =>
+                @position.x -= p.x
+                @position.y -= p.y
+                @move_bus.push(@position))
 
-    hittest: (p) ->
+    hittest: (p) =>
         dx = p.x - @position.x
         dy = p.y - @position.y
         (dx ** 2 + dy ** 2) < @radius ** 2
 
-    moveBus: () -> @move_bus
+    moveBus: () => @move_bus
 
-    draw: (ctx) ->
+    draw: (ctx) =>
       ctx.beginPath();
       ctx.arc(@position.x, @position.y, @radius, 0, Math.PI*2, false);
       ctx.stroke();
-
 

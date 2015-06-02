@@ -17,25 +17,26 @@ class Hough
         @pq_canvas = document.getElementById("uv-canvas");
         @pq_ctx = @pq_canvas.getContext("2d")
 
-        @width = @xy_canvas.width
-        @height = @xy_canvas.height
+        @trans_func = (x, y, p) -> -p * x + y + 1
+        @rev_trans_func = (_x, _y, x) => _x * x + _y + 1
 
-        @xy_line = new Line(((_x, _y, x) => _x * x + _y + 1), @xy_canvas)
+
+        @xy_line = new Line(@rev_trans_func, @xy_canvas)
 
         @points = []
         @pq_lines = []
+
         for i in [1...11]
-            do (i) =>
-                position = { x: 10 * i, y: 10 * i }
-                point = new DraggablePoint(@xy_canvas, position, 5)
-                q = (x, y, p) -> -p * x + y + 1
-                pq_line = new Line(q, @pq_canvas)
+            position = { x: 10 * i, y: 10 * i }
+            point = new DraggablePoint(@xy_canvas, position, 5)
+            line = new Line(@trans_func, @pq_canvas)
+            do (line) =>
                 point.moveBus().onValue((p) =>
-                    pq_line.move(p.x, p.y)
+                    line.move(p.x, p.y)
                     @draw())
-                pq_line.move(position.x, position.y)
-                @pq_lines.push(pq_line)
-                @points.push(point)
+            line.move(position.x, position.y)
+            @pq_lines.push(line)
+            @points.push(point)
 
         mouseleave = Bacon.fromEvent(@pq_canvas, "mouseleave")
         mousemove = Bacon.fromEvent(@pq_canvas, "mousemove")
@@ -51,13 +52,10 @@ class Hough
 
     draw: ->
         @xy_ctx.fillStyle = "rgb(255, 255, 255)";
-        @xy_ctx.fillRect(0, 0, @width, @height);
+        @xy_ctx.fillRect(0, 0, @xy_canvas.width, @xy_canvas.height);
 
         @pq_ctx.fillStyle = "rgb(255, 255, 255)";
-        @pq_ctx.fillRect(0, 0, @width, @height);
-
-        hw = @width / 2
-        hh = @height / 2
+        @pq_ctx.fillRect(0, 0, @pq_canvas.width, @pq_canvas.height);
 
         for point in @points
             point.draw(@xy_ctx)

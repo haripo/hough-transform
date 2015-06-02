@@ -23,13 +23,19 @@ class Hough
         @xy_line = new Line(((_x, _y, x) => _x * x + _y + 1), @xy_canvas)
 
         @points = []
-        for i in [1...10]
-            position = { x: 10 * i, y: 10 * i }
-            point = new DraggablePoint(@xy_canvas, position, 5)
-            point.moveBus().onValue(() =>
-                @draw()
-            )
-            @points.push(point)
+        @pq_lines = []
+        for i in [1...11]
+            do (i) =>
+                position = { x: 10 * i, y: 10 * i }
+                point = new DraggablePoint(@xy_canvas, position, 5)
+                q = (x, y, p) -> -p * x + y + 1
+                pq_line = new Line(q, @pq_canvas)
+                point.moveBus().onValue((p) =>
+                    pq_line.move(p.x, p.y)
+                    @draw())
+                pq_line.move(position.x, position.y)
+                @pq_lines.push(pq_line)
+                @points.push(point)
 
         mouseleave = Bacon.fromEvent(@pq_canvas, "mouseleave")
         mousemove = Bacon.fromEvent(@pq_canvas, "mousemove")
@@ -56,14 +62,8 @@ class Hough
         for point in @points
             point.draw(@xy_ctx)
 
-            # draw line on uv-canvas
-            px = point.position.x / hw - 1
-            py = point.position.y / hh - 1
-            q = (p) -> -p * px + py + 1
-            @pq_ctx.beginPath()
-            @pq_ctx.moveTo(0, q(-1) * hh)
-            @pq_ctx.lineTo(@width, q(1) * hh)
-            @pq_ctx.stroke()
+        for pq_line in @pq_lines
+            pq_line.draw(@pq_ctx)
 
         @xy_line.draw(@xy_ctx)
 

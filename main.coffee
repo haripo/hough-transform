@@ -19,7 +19,9 @@ class Hough
 
         @trans_func = (x, y, p) -> -p * x + y + 1
         @rev_trans_func = (_x, _y, x) => _x * x + _y + 1
-
+        # Because of rendering problem, I use above functions instead of
+        # @trans_func = (x, y, p) -> -p * x + y + 1
+        # @rev_trans_func = (_x, _y, x) => _x * x + _y - 1
 
         @xy_line = new Line(@rev_trans_func, @xy_canvas)
 

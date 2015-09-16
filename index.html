@@ -10,15 +10,57 @@
     <link rel="stylesheet" href="css/normalize.css">
     <link rel="stylesheet" href="css/skeleton.css">
     <link rel="stylesheet" href="css/style.css">
+    <script type="text/javascript"
+            src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+    </script>
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+      tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}
+      });
+    </script>
   </head>
   <body>
     <div class="container">
       <h1>Hough transform</h1>
+      <p>
+        ハフ変換（Hough Transform）による直線検出の実装
+      </p>
+      <h2>Theory</h2>
+      <p>
+        ハフ変換は画像から直線をなす特徴点を検出する手法。
+      </p>
+      <p>
+        xy 平面上の点 $(x, y)$ を $v = -xu + y + 1$ にしたがって uv 平面上の直線に写像する。
+      </p>
+      <p>
+        このとき xy 平面で $y = ax + b$ 直線上にある点 $(x_0, y_0)$ は、<br>
+        uv 平面の直線 $v = -x_0 u + y_0 + 1 \\
+        v = a x_0 - u x_0 + b + 1 \\
+        v - (b + 1) = (a - u) x_0$<br>
+        に写像される。
+      </p>
+      <p>
+        この直線は点 $(a, b+1)$ を必ず通るので、<br>
+        uv 平面上の 3 つ以上の直線が 1 点で交わった時、
+        xy 平面上でそれらの直線に対応する点は $y = ax + b - 1$ 上にあることがわかる。
+      </p>
+      <h2>Demo</h2>
       <div class="demo">
-        <canvas id="xy-canvas" width="400" height="400">
-        </canvas>
-        <canvas id="uv-canvas" width="400" height="400">
-        </canvas>
+        <div style="float:left; margin-right: 20px">
+          <div>
+            xy-平面 ( 白丸をドラッグ可能 )
+          </div>
+          <canvas id="xy-canvas" width="400" height="400">
+          </canvas>
+        </div>
+        <div style="float:left">
+          <div>
+            uv-平面
+          </div>
+          <canvas id="uv-canvas" width="400" height="400">
+          </canvas>
+        </div>
+        <br style="clear:both">
       </div>
       <script type="text/javascript" src="Bacon.js"></script>
       <script type="text/javascript" src="main.js"></script>
